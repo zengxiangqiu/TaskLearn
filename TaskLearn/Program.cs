@@ -19,11 +19,11 @@ namespace TaskLearn
         {
             string viewstate = GetViewstate();
             //Task task = Task.Factory.StartNew(LoadUser, viewstate);
-            
-            for (int i = 1; i <= 10; i++)
+
+            for (int i = 1; i <= 20; i++)
             {
                 PageIndex pageIndex = new PageIndex { page = i, viewstate = viewstate };
-                Task<string> taskMin =  Task.Factory.StartNew(LoadUser, pageIndex);
+                Task<string> taskMin = Task.Factory.StartNew(LoadUser, pageIndex);
                 taskMin.Wait();
                 if (taskMin.Status == TaskStatus.RanToCompletion)
                     viewstate = taskMin.Result;
@@ -54,7 +54,7 @@ namespace TaskLearn
             PageIndex pageInfo = (PageIndex)pageIndex;
             WebClientEx client = new WebClientEx();
             NameValueCollection data = new NameValueCollection();
-            data.Add("__EVENTTARGET",   pageInfo.page != 1? "NextLBtn":"");
+            data.Add("__EVENTTARGET", pageInfo.page != 1 ? "NextLBtn" : "");
             data.Add("__EVENTARGUMENT", "");
             data.Add("__VIEWSTATE", pageInfo.viewstate.ToString()); //your string
             data.Add("__VIEWSTATEGENERATOR", "3C84D956");
@@ -82,19 +82,53 @@ namespace TaskLearn
                         };
                         return user;
                     });
-            using (FileStream fs = File.Open("1.txt", FileMode.OpenOrCreate, FileAccess.ReadWrite)) {
-                StringBuilder sb = new StringBuilder();
-                foreach (var item in value)
-                {
-                    sb.AppendLine(item.name + "," + item.company + "," + item.state + "," + item.gv + "," + item.begindate + "," + item.enddate);
-                }
-                byte[] targetByte = Encoding.UTF8.GetBytes(sb.ToString());
-                fs.Position = fs.Length;
-                fs.Write(targetByte, 0, targetByte.Length);
-                fs.Flush();
-                Console.WriteLine(pageInfo.page +" success to write in file");
-                return pageInfo.viewstate.ToString();
+            //using (FileStream fs = File.Open("1.txt", FileMode.OpenOrCreate, FileAccess.ReadWrite))
+            //{
+            //    StringBuilder sb = new StringBuilder();
+            //    foreach (var item in value)
+            //    {
+            //        sb.AppendLine(item.name + "," + item.company + "," + item.state + "," + item.gv + "," + item.begindate + "," + item.enddate);
+            //    }
+            //    byte[] targetByte = Encoding.UTF8.GetBytes(sb.ToString());
+            //    fs.Position = fs.Length;
+            //    fs.Write(targetByte, 0, targetByte.Length);
+            //    fs.Flush();
+            //Console.WriteLine(pageInfo.page + " success to write in file");
+            Console.WriteLine(value.ToList().Count);
+            using (var db = new SGVEntities())
+            {
+                value
+                    .ToList()
+                    .ForEach(
+                    user =>
+                    {
+                        var query = (from talent in db.TALENTINTRODUCTIONs
+                                     where talent.Name == user.name && talent.Company == user.company
+                                     select talent).FirstOrDefault();
+                        if (query == null)
+                        {
+                            query = new TALENTINTRODUCTION
+                            {
+                                Name = user.name,
+                                Company = user.company,
+                                State = user.state,
+                                Gv = user.gv,
+                                BeginDate = user.begindate,
+                                EndDate = user.enddate
+                            };
+                            db.TALENTINTRODUCTIONs.Add(query);
+                            db.SaveChanges();
+                        }
+                        else
+                        {
+                            Console.WriteLine("find dipulication" + user.name);
+                        }
+                    });
+
             }
+            Console.WriteLine(pageInfo.page + " success to write in db");
+            return pageInfo.viewstate.ToString();
+            //}
         }
 
         public class TT : IHtmlEncoder
